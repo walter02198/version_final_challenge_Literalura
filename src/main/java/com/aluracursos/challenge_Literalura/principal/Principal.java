@@ -5,18 +5,6 @@ import com.aluracursos.challenge_Literalura.repository.LibrosRepository;
 import com.aluracursos.challenge_Literalura.service.ConsumoApi;
 import com.aluracursos.challenge_Literalura.service.ConvierteDatos;
 import com.aluracursos.challenge_Literalura.service.LibroService;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionException;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallbackWithoutResult;
-import org.springframework.transaction.support.TransactionTemplate;
-
-import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,13 +17,13 @@ public class Principal {
     private Scanner teclado = new Scanner(System.in);
     private LibrosRepository repositorio;
     private LibroService libroService = new LibroService();
-
+    private Integer opcion = -1;
     public Principal(LibrosRepository repository) {
         this.repositorio = repository;
     }
 
     public void muestraElMenu() {
-        var opcion = -1;
+
         while (opcion != 0) {
             var menu = """
                     \nElija la opcion a traves de su numero:
@@ -109,7 +97,7 @@ public class Principal {
                 .filter(l -> l.titulo().toUpperCase().contains(tituloLibro.toUpperCase()))
                 .findFirst();
 
-        //este ifme permite insertar el libro si es que esta presente en la apì.
+        //este if me permite insertar el libro si es que esta presente en la apì.
         if (libroBuscado.isPresent()) {
 
             var libro = new Libros(libroBuscado.get());
@@ -123,12 +111,10 @@ public class Principal {
             titulos = repositorio.mostrarListaTitulos().stream().collect(Collectors.toList());
             boolean tituloRepetido = libroService.compararTitulos(tituloBuscado, titulos);
 
-
             if (!tituloRepetido) {
                 libro.setAutor(datosBusqueda1);
                 repositorio.save(libro);
                 System.out.println(libro);
-
             } else {
                 System.out.println("El libro ya esta registrado");
             }
@@ -150,89 +136,23 @@ public class Principal {
     public void autoresYLibros() {
         //aca traemos de la interfaz JpaRepository la lista de los libros
         List<Autor> autores = repositorio.encontrarConLibros();
-        Map<String, Autor> autorMap = new HashMap<>();
-/*
-Este código utilizamos la anotación @Map para definir un mapa con claves de tipo
-String y valores de tipo Autor. Luego, se crea una instancia del mapa utilizando new HashMap<>().
-
-Después, iteramos sobre una lista de objetos Autor llamada autores.
-Para cada objeto Autor, se verifica si ya existe una entrada en el mapa con la clave
-igual al nombre del autor (autor.getNombre()). Si existe, se agregan los libros del autor
-actual a la lista de libros del autor existente en el mapa. Si no existe, se agrega la entrada
- del autor actual al mapa con su nombre como clave y el objeto Autor como valor.
-
-En decir, este código se utiliza para agrupar objetos Autor en un mapa basado en su nombre,
-y para agregar los libros de cada autor a la lista de libros del autor existente en el mapa
-si ya existe una entrada para ese autor.
-
-Finalmente, se itera sobre el mapa autorMap para mostrar los datos de un unico autor,
-si hay nombres de autor repetidos no los muestra, y nos agrupa todos los libros que posee en la clase de
-datos
-incluyendo su nombre, fecha de nacimiento y fecha de fallecimiento, y sus libros.
- */
-        for (Autor autor : autores) {
-            if (autorMap.containsKey(autor.getNombre())) {
-                autorMap.get(autor.getNombre()).getLibro().addAll(autor.getLibro());
-            } else {
-                autorMap.put(autor.getNombre(), autor);
-            }
-        }
-
-        /*
-        Este fragmento de código imprime información sobre autores y sus libros. Recorre
-         cada valor en el autorMap (que es un Map con los nombres de los autores como claves y
-         objetos Autor como valores). Para cada objeto Autor, imprime el nombre del autor,
-         la fecha de nacimiento y la fecha de fallecimiento.
-
-        Luego, crea una lista de los libros del autor (Libros objetos) y crea una cadena de
-         caracteres con los títulos de los libros separados por comas. Esta cadena se imprime,
-          junto con un salto de línea.
-         */
-        for (Autor autor : autorMap.values()) {
-            System.out.println("******************************************************************\n" +
-                    "\n- Autor: " + autor.getNombre() +
-                    "\n- Fecha de nacimiento: " + autor.getFechaDeNacimiento() +
-                    "\n- Fecha De fallecimiento: " + autor.getFechaDeFallecimiento());
-
-            List<Libros> libros = autor.getLibro();
-            String titulosLibros = libros.stream()
-                    .map(Libros::getTitulo)
-                    .collect(Collectors.joining(","));
-            System.out.println("- Libros: " + "[" + titulosLibros + "]" + "\n");
-        }
-        System.out.println("******************************************************************");
+        libroService.mostrarAutores(autores);
     }
 
     //   este codigo es parecido al anteior la unica diferencia es que escogemos los registros con los
     //autores vivo segun el anio que el usuario elija, y nos lo muestra por consola.
     public void mostrarAutoresYVivos() {
-        System.out.println("Ingrese El año Que ud guste para que le muestre el listado de autores vivos");
+        System.out.println("Ingrese El año que ud guste(entre 1000 y 2000) para que le muestre el listado de autores vivos");
         var fecha = teclado.nextInt();
         teclado.nextLine();
-        List<Autor> autoresVivos = repositorio.mostrarAutoresYVivos(fecha);
-        Map<String, Autor> autorMap = new HashMap<>();
-
-        for (Autor autor : autoresVivos) {
-            if (autorMap.containsKey(autor.getNombre())) {
-                autorMap.get(autor.getNombre()).getLibro().addAll(autor.getLibro());
-            } else {
-                autorMap.put(autor.getNombre(), autor);
-            }
+        if(fecha>1000 && fecha<2000){
+            List<Autor> autoresVivos = repositorio.mostrarAutoresYVivos(fecha);
+            libroService.mostrarAutores(autoresVivos);
+        }else{
+            System.out.println("Opcion no valida"+"\nPor favor ingrese un año entre 1000 y 2000");
+            teclado.next();
         }
 
-        for (Autor autor : autorMap.values()) {
-            System.out.println("******************************************************************\n" +
-                    "\n- Autor: " + autor.getNombre() +
-                    "\n- Fecha de nacimiento: " + autor.getFechaDeNacimiento() +
-                    "\n- Fecha De fallecimiento: " + autor.getFechaDeFallecimiento());
-
-            List<Libros> libros = autor.getLibro();
-            String titulosLibros = libros.stream()
-                    .map(Libros::getTitulo)
-                    .collect(Collectors.joining(","));
-            System.out.println("- Libros: " + "[" + titulosLibros + "]" + "\n");
-        }
-        System.out.println("******************************************************************");
     }
 
     //Aca nos muestra una lista de los idiomas de los libros, y nos muestra todos lo libros segun el idioma
@@ -254,10 +174,7 @@ incluyendo su nombre, fecha de nacimiento y fecha de fallecimiento, y sus libros
             System.out.println(menuIdiomas);
             if (teclado.hasNextInt()) {
                 opcionIdioma = teclado.nextInt();
-                if (opcionIdioma == 5) {
-                    muestraElMenu();
-
-                }else if (opcionIdioma < 5) {
+                if (opcionIdioma < 5) {
                     teclado.nextLine();
                 } else {
                     System.out.println("Opcion no valida");
@@ -273,28 +190,29 @@ incluyendo su nombre, fecha de nacimiento y fecha de fallecimiento, y sus libros
                     idioma = "pt";
                 } else if (opcionIdioma == 4) {
                     idiomaCompleto = "Italiano";
-                    idioma = "tl";
+                    idioma = "it";
                 }
                 List<Libros> idiomas = repositorio.buscarPorIdioma(idioma);
-                System.out.println(idioma);
-                System.out.println(idiomaCompleto);
-                if(opcionIdioma!=0){
-                    System.out.println("\n*********Estos son Los libros que estan en idioma " + idiomaCompleto + "*********");
-                    for (Libros libro : idiomas) {
-                        System.out.println("\n- Libro: " + libro.getTitulo() +
-                                "\n- Autor: " + libro.getNombre() +
-                                "\n- Numero de descargas: " + libro.getNumeroDeDescargas());
-                        System.out.println("\n*****************************************************************");
+
+                if (opcionIdioma > 0 && opcionIdioma < 5) {
+
+                        System.out.println("\n********* Estos son Los libros que estan en idioma " + idiomaCompleto + " *********");
+                        for (Libros libro : idiomas) {
+                            System.out.println("\n- Libro: " + libro.getTitulo() +
+                                    "\n- Autor: " + libro.getNombre() +
+                                    "\n- Numero de descargas: " + libro.getNumeroDeDescargas());
+                            System.out.println("\n*****************************************************************");
+                        }
                     }
+                } else if(opcion!=0){
+                    System.out.println("Opcion no valida");
+                    teclado.next();
                 }
-            } else  {
-                System.out.println("Opcion no valida");
-                teclado.next();
             }
         }
     }
 
-}
+
 
 
 
